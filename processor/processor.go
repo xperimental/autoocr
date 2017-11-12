@@ -16,28 +16,30 @@ import (
 
 // Processor processes PDF files.
 type Processor struct {
-	ctx          context.Context
-	log          *logrus.Entry
-	inputDir     string
-	outputDir    string
-	pdfSandwich  string
-	languages    string
-	keepOriginal bool
-	trigger      chan struct{}
+	ctx            context.Context
+	log            *logrus.Entry
+	inputDir       string
+	outputDir      string
+	pdfSandwich    string
+	languages      string
+	keepOriginal   bool
+	outPermissions os.FileMode
+	trigger        chan struct{}
 }
 
 // New creates a new processor that will process all PDF files in a directory.
 // Call Start to actually start waiting for signals.
-func New(ctx context.Context, logger *logrus.Logger, inputDir, pdfSandwich, languages, outputDir string, keepOriginal bool) (*Processor, error) {
+func New(ctx context.Context, logger *logrus.Logger, inputDir, pdfSandwich, languages, outputDir string, keepOriginal bool, outPermissions os.FileMode) (*Processor, error) {
 	return &Processor{
-		ctx:          ctx,
-		log:          logger.WithField("component", "processor"),
-		inputDir:     inputDir,
-		outputDir:    outputDir,
-		pdfSandwich:  pdfSandwich,
-		languages:    languages,
-		keepOriginal: keepOriginal,
-		trigger:      make(chan struct{}),
+		ctx:            ctx,
+		log:            logger.WithField("component", "processor"),
+		inputDir:       inputDir,
+		outputDir:      outputDir,
+		pdfSandwich:    pdfSandwich,
+		languages:      languages,
+		keepOriginal:   keepOriginal,
+		outPermissions: outPermissions,
+		trigger:        make(chan struct{}),
 	}, nil
 }
 
@@ -104,8 +106,16 @@ func (p *Processor) processFiles(files []string) error {
 }
 
 func (p *Processor) processFile(file string) error {
+	statusFile := filepath.Join(p.inputDir, filepath.Base(file)+".processing")
+	status, err := os.OpenFile(statusFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return fmt.Errorf("error creating status file: %s", err)
+	}
+	status.Close()
+	defer os.Remove(statusFile)
+
 	debugFile := filepath.Join(p.outputDir, filepath.Base(file)+".debug.txt")
-	debug, err := os.Create(debugFile)
+	debug, err := os.OpenFile(debugFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, p.outPermissions)
 	if err != nil {
 		return fmt.Errorf("error creating debug file: %s", err)
 	}
@@ -127,9 +137,13 @@ func (p *Processor) processFile(file string) error {
 		return fmt.Errorf("error running pdfsandwich: %s", err)
 	}
 
+	if err := os.Chmod(outFile, p.outPermissions); err != nil {
+		return fmt.Errorf("error setting permissions: %s", err)
+	}
+
 	if p.keepOriginal {
 		backupFile := filepath.Join(p.outputDir, filepath.Base(file)+".backup")
-		if err := copyFile(file, backupFile); err != nil {
+		if err := copyFile(file, backupFile, p.outPermissions); err != nil {
 			return fmt.Errorf("error creating backup: %s", err)
 		}
 	}
@@ -145,14 +159,14 @@ func (p *Processor) processFile(file string) error {
 	return nil
 }
 
-func copyFile(src, dst string) error {
+func copyFile(src, dst string, perms os.FileMode) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("error opening source: %s", err)
 	}
 	defer srcFile.Close()
 
-	dstFile, err := os.Create(dst)
+	dstFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, perms)
 	if err != nil {
 		return fmt.Errorf("error creating target: %s", err)
 	}

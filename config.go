@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -57,15 +58,36 @@ func (f *logLevel) Type() string {
 	return "string"
 }
 
+type fileMode os.FileMode
+
+func (f *fileMode) String() string {
+	return logrus.Level(*f).String()
+}
+
+func (f *fileMode) Set(value string) error {
+	val, err := strconv.Atoi(value)
+	if err != nil {
+		return err
+	}
+
+	*f = fileMode(val)
+	return nil
+}
+
+func (f *fileMode) Type() string {
+	return "uint32"
+}
+
 type config struct {
-	InputDir     string
-	OutputDir    string
-	PdfSandwich  string
-	Languages    string
-	Delay        time.Duration
-	LogFormat    logFormat
-	LogLevel     logLevel
-	KeepOriginal bool
+	InputDir       string
+	OutputDir      string
+	PdfSandwich    string
+	Languages      string
+	Delay          time.Duration
+	LogFormat      logFormat
+	LogLevel       logLevel
+	KeepOriginal   bool
+	OutPermissions fileMode
 }
 
 func (c config) CreateLogger() *logrus.Logger {
@@ -83,14 +105,15 @@ func (c config) CreateLogger() *logrus.Logger {
 
 func parseArgs() (config, error) {
 	cfg := config{
-		InputDir:     "input",
-		OutputDir:    "output",
-		PdfSandwich:  "pdfsandwich",
-		Languages:    "deu+eng",
-		Delay:        5 * time.Second,
-		LogFormat:    logFormatPlain,
-		LogLevel:     logLevel(logrus.InfoLevel),
-		KeepOriginal: true,
+		InputDir:       "input",
+		OutputDir:      "output",
+		PdfSandwich:    "pdfsandwich",
+		Languages:      "deu+eng",
+		Delay:          5 * time.Second,
+		LogFormat:      logFormatPlain,
+		LogLevel:       logLevel(logrus.InfoLevel),
+		KeepOriginal:   true,
+		OutPermissions: fileMode(0644),
 	}
 	pflag.StringVarP(&cfg.InputDir, "input", "i", cfg.InputDir, "Directory to use for input.")
 	pflag.StringVarP(&cfg.OutputDir, "output", "o", cfg.OutputDir, "Directory to use for output.")
@@ -100,6 +123,7 @@ func parseArgs() (config, error) {
 	pflag.Var(&cfg.LogFormat, "log-format", "Logging format to use.")
 	pflag.Var(&cfg.LogLevel, "log-level", "Logging level to show.")
 	pflag.BoolVar(&cfg.KeepOriginal, "keep-original", cfg.KeepOriginal, "Keep backup of original file.")
+	pflag.Var(&cfg.OutPermissions, "permissions", "Permissions on output files.")
 	pflag.Parse()
 
 	if len(cfg.InputDir) == 0 {
