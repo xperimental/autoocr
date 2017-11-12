@@ -51,7 +51,7 @@ func main() {
 		defer wg.Done()
 
 		abort := make(chan os.Signal)
-		signal.Notify(abort, syscall.SIGINT)
+		signal.Notify(abort, syscall.SIGINT, syscall.SIGTERM)
 		defer signal.Stop(abort)
 
 		logger.Info("Waiting for changes...")
