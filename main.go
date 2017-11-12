@@ -8,6 +8,8 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/xperimental/autoocr/processor"
+	"github.com/xperimental/autoocr/watcher"
 )
 
 var log = logrus.New()
@@ -24,13 +26,13 @@ func main() {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	watcher, err := newWatcher(ctx, config.InputDir, config.Delay)
+	watcher, err := watcher.New(ctx, log, config.InputDir, config.Delay)
 	if err != nil {
 		log.Fatalf("Error creating watcher: %s", err)
 	}
 	watcher.Start(wg)
 
-	processor, err := newProcessor(ctx, config.InputDir, config.PdfSandwich, config.Languages, config.OutputDir)
+	processor, err := processor.New(ctx, log, config.InputDir, config.PdfSandwich, config.Languages, config.OutputDir)
 	if err != nil {
 		log.Fatalf("Error creating processor: %s", err)
 	}
@@ -51,14 +53,11 @@ func main() {
 				cancel()
 				return
 			case <-watcher.Trigger:
-				processor.Run()
+				processor.Trigger()
 			}
 		}
 	}()
 
 	wg.Wait()
 	log.Println("All done. Exiting.")
-}
-
-func eventLoop(wg *sync.WaitGroup, abort chan os.Signal, trigger chan struct{}) {
 }

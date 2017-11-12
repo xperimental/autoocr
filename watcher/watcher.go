@@ -1,4 +1,4 @@
-package main
+package watcher
 
 import (
 	"context"
@@ -6,11 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/fsnotify/fsnotify"
 )
 
-type watcher struct {
+// A Watcher watches a directory for changes and waits a delay until triggering an output event.
+type Watcher struct {
 	ctx      context.Context
+	log      *logrus.Logger
 	inputDir string
 	delay    time.Duration
 	watcher  *fsnotify.Watcher
@@ -19,7 +22,8 @@ type watcher struct {
 	Trigger chan struct{}
 }
 
-func newWatcher(ctx context.Context, inputDir string, delay time.Duration) (*watcher, error) {
+// New creates a new filesystem watcher. Need to call Start() to actually start watching.
+func New(ctx context.Context, logger *logrus.Logger, inputDir string, delay time.Duration) (*Watcher, error) {
 	watch, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("error creating watcher: %s", err)
@@ -29,8 +33,9 @@ func newWatcher(ctx context.Context, inputDir string, delay time.Duration) (*wat
 		return nil, fmt.Errorf("error adding watch for input: %s", err)
 	}
 
-	return &watcher{
+	return &Watcher{
 		ctx:      ctx,
+		log:      logger,
 		inputDir: inputDir,
 		delay:    delay,
 		watcher:  watch,
@@ -39,25 +44,26 @@ func newWatcher(ctx context.Context, inputDir string, delay time.Duration) (*wat
 	}, nil
 }
 
-func (w *watcher) Close() error {
-	return w.watcher.Close()
-}
-
-func (w *watcher) resetTimer() {
+func (w *Watcher) resetTimer() {
 	if !w.timer.Stop() {
 		<-w.timer.C
 	}
 	w.timer.Reset(w.delay)
 }
 
-func (w *watcher) Start(wg *sync.WaitGroup) {
+// Start starts the background routine which watches for filesystem events.
+// The waitgroup is used for tracking the shutdown.
+func (w *Watcher) Start(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for {
 			select {
 			case <-w.ctx.Done():
-				log.Info("Stopping watcher.")
+				w.log.Info("Stopping watcher.")
+				if err := w.watcher.Close(); err != nil {
+					w.log.Errorf("Error closing watcher: %s", err)
+				}
 				return
 			case <-w.watcher.Events:
 				w.timer.Reset(w.delay)
