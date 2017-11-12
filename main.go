@@ -22,6 +22,7 @@ func main() {
 
 	logger.Debugf("Input: %s", config.InputDir)
 	logger.Debugf("Output: %s", config.OutputDir)
+	logger.Debugf("Permissions: %s", os.FileMode(config.OutPermissions))
 
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())

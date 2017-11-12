@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -61,11 +62,16 @@ func (f *logLevel) Type() string {
 type fileMode os.FileMode
 
 func (f *fileMode) String() string {
-	return logrus.Level(*f).String()
+	return fmt.Sprintf("%s", os.FileMode(*f))
 }
 
 func (f *fileMode) Set(value string) error {
-	val, err := strconv.Atoi(value)
+	base := 10
+	if strings.HasPrefix(value, "0") {
+		base = 8
+	}
+
+	val, err := strconv.ParseUint(value, base, 16)
 	if err != nil {
 		return err
 	}
