@@ -13,7 +13,7 @@ import (
 // A Watcher watches a directory for changes and waits a delay until triggering an output event.
 type Watcher struct {
 	ctx      context.Context
-	log      *logrus.Logger
+	log      *logrus.Entry
 	inputDir string
 	delay    time.Duration
 	watcher  *fsnotify.Watcher
@@ -35,7 +35,7 @@ func New(ctx context.Context, logger *logrus.Logger, inputDir string, delay time
 
 	return &Watcher{
 		ctx:      ctx,
-		log:      logger,
+		log:      logger.WithField("component", "watcher"),
 		inputDir: inputDir,
 		delay:    delay,
 		watcher:  watch,

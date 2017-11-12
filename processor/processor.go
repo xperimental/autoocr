@@ -16,7 +16,7 @@ import (
 // Processor processes PDF files.
 type Processor struct {
 	ctx         context.Context
-	log         *logrus.Logger
+	log         *logrus.Entry
 	inputDir    string
 	outputDir   string
 	pdfSandwich string
@@ -29,7 +29,7 @@ type Processor struct {
 func New(ctx context.Context, logger *logrus.Logger, inputDir, pdfSandwich, languages, outputDir string) (*Processor, error) {
 	return &Processor{
 		ctx:         ctx,
-		log:         logger,
+		log:         logger.WithField("component", "processor"),
 		inputDir:    inputDir,
 		outputDir:   outputDir,
 		pdfSandwich: pdfSandwich,
@@ -87,13 +87,15 @@ func (p *Processor) run() error {
 
 func (p *Processor) processFiles(files []string) error {
 	for _, file := range files {
-		p.log.Printf("Processing %s ...", file)
+		filelog := p.log.WithField("file", file)
+		filelog.Print("Start processing.")
 		start := time.Now()
 		if err := p.processFile(file); err != nil {
-			return fmt.Errorf("error processing file %s: %s", file, err)
+			filelog.WithError(err).Error("Error processing file.")
+			continue
 		}
 
-		p.log.Printf("Processed %s in %s.", file, time.Since(start))
+		filelog.Printf("Processing successful in %s.", time.Since(start))
 	}
 	return nil
 }
