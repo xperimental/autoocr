@@ -25,4 +25,4 @@ VOLUME [ "/data/input", "/data/output" ]
 COPY --from=builder /go/bin/autoocr /bin/autoocr
 
 ENTRYPOINT [ "/bin/autoocr" ]
-CMD [ "-i", "/data/input", "-o", "/data/output"]
+CMD [ ]

@@ -105,8 +105,8 @@ func (c config) CreateLogger() *logrus.Logger {
 
 func parseArgs() (config, error) {
 	cfg := config{
-		InputDir:       "input",
-		OutputDir:      "output",
+		InputDir:       "/data/input",
+		OutputDir:      "/data/output",
 		PdfSandwich:    "pdfsandwich",
 		Languages:      "deu+eng",
 		Delay:          5 * time.Second,
