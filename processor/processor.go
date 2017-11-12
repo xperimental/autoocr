@@ -46,7 +46,7 @@ func (p *Processor) Start(wg *sync.WaitGroup) {
 		for {
 			select {
 			case <-p.ctx.Done():
-				p.log.Print("Stopping processor.")
+				p.log.Print("Stopping.")
 				return
 			case <-p.trigger:
 				if err := p.run(); err != nil {

@@ -60,7 +60,7 @@ func (w *Watcher) Start(wg *sync.WaitGroup) {
 		for {
 			select {
 			case <-w.ctx.Done():
-				w.log.Info("Stopping watcher.")
+				w.log.Info("Stopping.")
 				if err := w.watcher.Close(); err != nil {
 					w.log.Errorf("Error closing watcher: %s", err)
 				}

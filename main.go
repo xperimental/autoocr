@@ -2,17 +2,15 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/xperimental/autoocr/processor"
 	"github.com/xperimental/autoocr/watcher"
 )
-
-var log = logrus.New()
 
 func main() {
 	config, err := parseArgs()
@@ -20,21 +18,23 @@ func main() {
 		log.Fatalf("Error parsing arguments: %s", err)
 	}
 
-	log.Printf("Input:  %s", config.InputDir)
-	log.Printf("Output: %s", config.OutputDir)
+	logger := config.CreateLogger()
+
+	logger.Debugf("Input: %s", config.InputDir)
+	logger.Debugf("Output: %s", config.OutputDir)
 
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	watcher, err := watcher.New(ctx, log, config.InputDir, config.Delay)
+	watcher, err := watcher.New(ctx, logger, config.InputDir, config.Delay)
 	if err != nil {
-		log.Fatalf("Error creating watcher: %s", err)
+		logger.Fatalf("Error creating watcher: %s", err)
 	}
 	watcher.Start(wg)
 
-	processor, err := processor.New(ctx, log, config.InputDir, config.PdfSandwich, config.Languages, config.OutputDir)
+	processor, err := processor.New(ctx, logger, config.InputDir, config.PdfSandwich, config.Languages, config.OutputDir)
 	if err != nil {
-		log.Fatalf("Error creating processor: %s", err)
+		logger.Fatalf("Error creating processor: %s", err)
 	}
 	processor.Start(wg)
 
@@ -46,7 +46,7 @@ func main() {
 		signal.Notify(abort, syscall.SIGINT)
 		defer signal.Stop(abort)
 
-		log.Println("Waiting for changes...")
+		logger.Info("Waiting for changes...")
 		for {
 			select {
 			case <-abort:
@@ -59,5 +59,5 @@ func main() {
 	}()
 
 	wg.Wait()
-	log.Println("All done. Exiting.")
+	logger.Info("All done. Exiting.")
 }
