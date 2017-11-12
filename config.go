@@ -104,7 +104,19 @@ func parseArgs() (config, error) {
 	}
 
 	if len(cfg.OutputDir) == 0 {
-		return cfg, errors.New("utput directory can not be empty")
+		return cfg, errors.New("output directory can not be empty")
+	}
+
+	if len(cfg.PdfSandwich) == 0 {
+		return cfg, errors.New("path to pdfsandwich can not be empty")
+	}
+
+	if len(cfg.Languages) == 0 {
+		return cfg, errors.New("languages can not be empty")
+	}
+
+	if cfg.Delay <= 0 {
+		return cfg, errors.New("delay can not be smaller or equal to zero")
 	}
 
 	return cfg, nil
