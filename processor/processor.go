@@ -3,6 +3,7 @@ package processor
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -15,26 +16,28 @@ import (
 
 // Processor processes PDF files.
 type Processor struct {
-	ctx         context.Context
-	log         *logrus.Entry
-	inputDir    string
-	outputDir   string
-	pdfSandwich string
-	languages   string
-	trigger     chan struct{}
+	ctx          context.Context
+	log          *logrus.Entry
+	inputDir     string
+	outputDir    string
+	pdfSandwich  string
+	languages    string
+	keepOriginal bool
+	trigger      chan struct{}
 }
 
 // New creates a new processor that will process all PDF files in a directory.
 // Call Start to actually start waiting for signals.
-func New(ctx context.Context, logger *logrus.Logger, inputDir, pdfSandwich, languages, outputDir string) (*Processor, error) {
+func New(ctx context.Context, logger *logrus.Logger, inputDir, pdfSandwich, languages, outputDir string, keepOriginal bool) (*Processor, error) {
 	return &Processor{
-		ctx:         ctx,
-		log:         logger.WithField("component", "processor"),
-		inputDir:    inputDir,
-		outputDir:   outputDir,
-		pdfSandwich: pdfSandwich,
-		languages:   languages,
-		trigger:     make(chan struct{}),
+		ctx:          ctx,
+		log:          logger.WithField("component", "processor"),
+		inputDir:     inputDir,
+		outputDir:    outputDir,
+		pdfSandwich:  pdfSandwich,
+		languages:    languages,
+		keepOriginal: keepOriginal,
+		trigger:      make(chan struct{}),
 	}, nil
 }
 
@@ -124,12 +127,39 @@ func (p *Processor) processFile(file string) error {
 		return fmt.Errorf("error running pdfsandwich: %s", err)
 	}
 
+	if p.keepOriginal {
+		backupFile := filepath.Join(p.outputDir, filepath.Base(file)+".backup")
+		if err := copyFile(file, backupFile); err != nil {
+			return fmt.Errorf("error creating backup: %s", err)
+		}
+	}
+
 	if err := os.Remove(file); err != nil {
 		return fmt.Errorf("error deleting original: %s", err)
 	}
 
 	if err := os.Remove(debugFile); err != nil {
 		return fmt.Errorf("error removing debug file: %s", err)
+	}
+
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("error opening source: %s", err)
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("error creating target: %s", err)
+	}
+	defer dstFile.Close()
+
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		return fmt.Errorf("error copying: %s", err)
 	}
 
 	return nil

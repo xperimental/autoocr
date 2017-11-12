@@ -58,13 +58,14 @@ func (f *logLevel) Type() string {
 }
 
 type config struct {
-	InputDir    string
-	OutputDir   string
-	PdfSandwich string
-	Languages   string
-	Delay       time.Duration
-	LogFormat   logFormat
-	LogLevel    logLevel
+	InputDir     string
+	OutputDir    string
+	PdfSandwich  string
+	Languages    string
+	Delay        time.Duration
+	LogFormat    logFormat
+	LogLevel     logLevel
+	KeepOriginal bool
 }
 
 func (c config) CreateLogger() *logrus.Logger {
@@ -82,13 +83,14 @@ func (c config) CreateLogger() *logrus.Logger {
 
 func parseArgs() (config, error) {
 	cfg := config{
-		InputDir:    "input",
-		OutputDir:   "output",
-		PdfSandwich: "pdfsandwich",
-		Languages:   "deu+eng",
-		Delay:       5 * time.Second,
-		LogFormat:   logFormatPlain,
-		LogLevel:    logLevel(logrus.InfoLevel),
+		InputDir:     "input",
+		OutputDir:    "output",
+		PdfSandwich:  "pdfsandwich",
+		Languages:    "deu+eng",
+		Delay:        5 * time.Second,
+		LogFormat:    logFormatPlain,
+		LogLevel:     logLevel(logrus.InfoLevel),
+		KeepOriginal: true,
 	}
 	pflag.StringVarP(&cfg.InputDir, "input", "i", cfg.InputDir, "Directory to use for input.")
 	pflag.StringVarP(&cfg.OutputDir, "output", "o", cfg.OutputDir, "Directory to use for output.")
@@ -97,6 +99,7 @@ func parseArgs() (config, error) {
 	pflag.DurationVar(&cfg.Delay, "delay", cfg.Delay, "Processing delay after receiving watch events.")
 	pflag.Var(&cfg.LogFormat, "log-format", "Logging format to use.")
 	pflag.Var(&cfg.LogLevel, "log-level", "Logging level to show.")
+	pflag.BoolVar(&cfg.KeepOriginal, "keep-original", cfg.KeepOriginal, "Keep backup of original file.")
 	pflag.Parse()
 
 	if len(cfg.InputDir) == 0 {

@@ -32,7 +32,7 @@ func main() {
 	}
 	watcher.Start(wg)
 
-	processor, err := processor.New(ctx, logger, config.InputDir, config.PdfSandwich, config.Languages, config.OutputDir)
+	processor, err := processor.New(ctx, logger, config.InputDir, config.PdfSandwich, config.Languages, config.OutputDir, config.KeepOriginal)
 	if err != nil {
 		logger.Fatalf("Error creating processor: %s", err)
 	}
