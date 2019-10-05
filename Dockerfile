@@ -26,6 +26,8 @@ RUN apt-get update \
  && rm -r /var/lib/apt/lists/* \
  && rm -r /var/cache/apt/*
 
+COPY _contrib/policy.xml /etc/ImageMagick-6/policy.xml
+
 RUN mkdir -p /data/input /data/output
 WORKDIR /data/output
 
