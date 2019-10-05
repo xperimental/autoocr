@@ -1,12 +1,21 @@
-FROM golang:1.9.2-alpine AS builder
+FROM golang:1.13.1 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /build
+
+COPY go.mod go.sum /build/
+
+RUN go mod download
+RUN go mod verify
+
+COPY . /build/
 
 ENV CGO_ENABLED=0
 
-COPY . /go/src/github.com/xperimental/autoocr/
-WORKDIR /go/src/github.com/xperimental/autoocr/
-RUN go install .
+RUN go install -tags netgo .
 
-FROM ubuntu:17.10
+FROM ubuntu:19.04
 LABEL maintainer="Robert Jacob <xperimental@solidproject.de>"
 
 ENV DEBIAN_FRONTEND=noninteractive
