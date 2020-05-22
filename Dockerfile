@@ -1,6 +1,4 @@
-FROM golang:1.14.3 AS builder
-
-ENV DEBIAN_FRONTEND=noninteractive
+FROM golang:1.14.3-alpine AS builder
 
 WORKDIR /build
 
@@ -13,7 +11,7 @@ COPY . /build/
 
 ENV CGO_ENABLED=0
 
-RUN go install -tags netgo .
+RUN go build -tags netgo -ldflags "-w" .
 
 FROM ubuntu:20.04
 LABEL maintainer="Robert Jacob <xperimental@solidproject.de>"
@@ -33,7 +31,7 @@ WORKDIR /data/output
 
 VOLUME [ "/data/input", "/data/output" ]
 
-COPY --from=builder /go/bin/autoocr /bin/autoocr
+COPY --from=builder /build/autoocr /bin/autoocr
 
 ENTRYPOINT [ "/bin/autoocr" ]
 CMD [ ]
