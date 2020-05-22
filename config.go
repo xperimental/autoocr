@@ -97,7 +97,9 @@ type config struct {
 }
 
 func (c config) CreateLogger() *logrus.Logger {
-	var formatter logrus.Formatter = &logrus.TextFormatter{}
+	var formatter logrus.Formatter = &logrus.TextFormatter{
+		DisableTimestamp: true,
+	}
 	if c.LogFormat == logFormatJSON {
 		formatter = &logrus.JSONFormatter{}
 	}
