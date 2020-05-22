@@ -1,4 +1,4 @@
-FROM golang:1.13.1 AS builder
+FROM golang:1.14.3 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -15,7 +15,7 @@ ENV CGO_ENABLED=0
 
 RUN go install -tags netgo .
 
-FROM ubuntu:19.04
+FROM ubuntu:20.04
 LABEL maintainer="Robert Jacob <xperimental@solidproject.de>"
 
 ENV DEBIAN_FRONTEND=noninteractive
