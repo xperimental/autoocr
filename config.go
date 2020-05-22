@@ -10,6 +10,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	"github.com/xperimental/autoocr/processor"
 )
 
 type logFormat string
@@ -81,7 +82,7 @@ func (f *fileMode) Set(value string) error {
 }
 
 func (f *fileMode) Type() string {
-	return "uint32"
+	return ""
 }
 
 type config struct {
@@ -108,6 +109,17 @@ func (c config) CreateLogger() *logrus.Logger {
 		Formatter: formatter,
 		Hooks:     make(logrus.LevelHooks),
 		Level:     logrus.Level(c.LogLevel),
+	}
+}
+
+func (c config) ProcessorConfig() processor.Config {
+	return processor.Config{
+		InputDir:          c.InputDir,
+		OutputDir:         c.OutputDir,
+		OutputPermissions: os.FileMode(c.OutPermissions),
+		PdfSandwichPath:   c.PdfSandwich,
+		Languages:         c.Languages,
+		KeepOriginal:      c.KeepOriginal,
 	}
 }
 

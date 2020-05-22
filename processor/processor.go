@@ -14,32 +14,32 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Config contains the configuration options for Processor.
+type Config struct {
+	InputDir          string
+	OutputDir         string
+	OutputPermissions os.FileMode
+	PdfSandwichPath   string
+	Languages         string
+	KeepOriginal      bool
+}
+
 // Processor processes PDF files.
 type Processor struct {
-	ctx            context.Context
-	log            *logrus.Entry
-	inputDir       string
-	outputDir      string
-	pdfSandwich    string
-	languages      string
-	keepOriginal   bool
-	outPermissions os.FileMode
-	trigger        chan struct{}
+	ctx     context.Context
+	log     *logrus.Entry
+	cfg     Config
+	trigger chan struct{}
 }
 
 // New creates a new processor that will process all PDF files in a directory.
 // Call Start to actually start waiting for signals.
-func New(ctx context.Context, logger *logrus.Logger, inputDir, pdfSandwich, languages, outputDir string, keepOriginal bool, outPermissions os.FileMode) (*Processor, error) {
+func New(ctx context.Context, logger *logrus.Logger, cfg Config) (*Processor, error) {
 	return &Processor{
-		ctx:            ctx,
-		log:            logger.WithField("component", "processor"),
-		inputDir:       inputDir,
-		outputDir:      outputDir,
-		pdfSandwich:    pdfSandwich,
-		languages:      languages,
-		keepOriginal:   keepOriginal,
-		outPermissions: outPermissions,
-		trigger:        make(chan struct{}),
+		ctx:     ctx,
+		log:     logger.WithField("component", "processor"),
+		cfg:     cfg,
+		trigger: make(chan struct{}),
 	}, nil
 }
 
@@ -68,7 +68,7 @@ func (p *Processor) Trigger() {
 }
 
 func (p *Processor) run() error {
-	infos, err := ioutil.ReadDir(p.inputDir)
+	infos, err := ioutil.ReadDir(p.cfg.InputDir)
 	if err != nil {
 		return fmt.Errorf("error reading directory: %s", err)
 	}
@@ -84,7 +84,7 @@ func (p *Processor) run() error {
 			continue
 		}
 
-		files = append(files, filepath.Join(p.inputDir, info.Name()))
+		files = append(files, filepath.Join(p.cfg.InputDir, info.Name()))
 	}
 
 	return p.processFiles(files)
@@ -106,7 +106,7 @@ func (p *Processor) processFiles(files []string) error {
 }
 
 func (p *Processor) processFile(file string) error {
-	statusFile := filepath.Join(p.inputDir, filepath.Base(file)+".processing")
+	statusFile := filepath.Join(p.cfg.InputDir, filepath.Base(file)+".processing")
 	status, err := os.OpenFile(statusFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("error creating status file: %s", err)
@@ -114,22 +114,22 @@ func (p *Processor) processFile(file string) error {
 	status.Close()
 	defer os.Remove(statusFile)
 
-	debugFile := filepath.Join(p.outputDir, filepath.Base(file)+".debug.txt")
-	debug, err := os.OpenFile(debugFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, p.outPermissions)
+	debugFile := filepath.Join(p.cfg.OutputDir, filepath.Base(file)+".debug.txt")
+	debug, err := os.OpenFile(debugFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, p.cfg.OutputPermissions)
 	if err != nil {
 		return fmt.Errorf("error creating debug file: %s", err)
 	}
 	defer debug.Close()
 
-	outFile := filepath.Join(p.outputDir, filepath.Base(file))
+	outFile := filepath.Join(p.cfg.OutputDir, filepath.Base(file))
 	args := []string{
 		"-o", outFile,
-		"-lang", p.languages,
+		"-lang", p.cfg.Languages,
 		"-rgb",
 		file,
 	}
 
-	command := exec.Command(p.pdfSandwich, args...)
+	command := exec.Command(p.cfg.PdfSandwichPath, args...)
 	command.Stdout = debug
 	command.Stderr = debug
 
@@ -137,13 +137,13 @@ func (p *Processor) processFile(file string) error {
 		return fmt.Errorf("error running pdfsandwich: %s", err)
 	}
 
-	if err := os.Chmod(outFile, p.outPermissions); err != nil {
+	if err := os.Chmod(outFile, p.cfg.OutputPermissions); err != nil {
 		return fmt.Errorf("error setting permissions: %s", err)
 	}
 
-	if p.keepOriginal {
-		backupFile := filepath.Join(p.outputDir, filepath.Base(file)+".backup")
-		if err := copyFile(file, backupFile, p.outPermissions); err != nil {
+	if p.cfg.KeepOriginal {
+		backupFile := filepath.Join(p.cfg.OutputDir, filepath.Base(file)+".backup")
+		if err := copyFile(file, backupFile, p.cfg.OutputPermissions); err != nil {
 			return fmt.Errorf("error creating backup: %s", err)
 		}
 	}
